@@ -631,11 +631,6 @@ foreach (source ${cxx-sources})
   list (APPEND sources ${CMAKE_CURRENT_SOURCE_DIR}/src/${source})
 endforeach ()
 
-foreach (source ${rc-sources})
-  list (APPEND sources ${CMAKE_CURRENT_BINARY_DIR}/${source})
-  configure_file (${CMAKE_CURRENT_SOURCE_DIR}/src/${source}.in ${CMAKE_CURRENT_BINARY_DIR}/${source})
-endforeach ()
-
 #   Delete any src/platform.hpp left by configure
 file (REMOVE ${CMAKE_CURRENT_SOURCE_DIR}/src/platform.hpp)
 
@@ -726,6 +721,11 @@ endif ()
 # output
 
 if (MSVC)
+  foreach (source ${rc-sources})
+    list (APPEND sources ${CMAKE_CURRENT_BINARY_DIR}/${source})
+    configure_file (${CMAKE_CURRENT_SOURCE_DIR}/src/${source}.in ${CMAKE_CURRENT_BINARY_DIR}/${source})
+  endforeach ()
+  
   add_library (libzmq SHARED ${sources} ${public_headers} ${html-docs} ${readme-docs} ${CMAKE_CURRENT_BINARY_DIR}/NSIS.template.in)
   target_link_libraries (libzmq ${OPTIONAL_LIBRARIES})
   set_target_properties (libzmq PROPERTIES
@@ -774,27 +774,43 @@ else ()
       PREFIX "")
 endif ()
 
+target_include_directories(libzmq SYSTEM INTERFACE
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>  # <prefix>/include
+)
+
+target_include_directories(libzmq-static SYSTEM INTERFACE
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>  # <prefix>/include
+)
+
 target_link_libraries (libzmq ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries (libzmq-static ${SODIUM_LIBRARY} ${CMAKE_THREAD_LIBS_INIT})
 
 if (SODIUM_FOUND)
   target_link_libraries (libzmq ${SODIUM_LIBRARIES})
 endif ()
 if (HAVE_WS2_32)
   target_link_libraries (libzmq ws2_32)
+  target_link_libraries (libzmq-static ws2_32)
 elseif (HAVE_WS2)
   target_link_libraries (libzmq ws2)
+  target_link_libraries (libzmq-static ws2)
 endif ()
 
 if (HAVE_RPCRT4)
   target_link_libraries (libzmq rpcrt4)
+  target_link_libraries (libzmq-static rpcrt4)
 endif ()
 
 if (HAVE_IPHLAPI)
   target_link_libraries (libzmq iphlpapi)
+  target_link_libraries (libzmq-static iphlpapi)
 endif ()
 
 if (RT_LIBRARY)
   target_link_libraries (libzmq ${RT_LIBRARY})
+  target_link_libraries (libzmq-static ${RT_LIBRARY})
 endif ()
 
 set (perf-tools local_lat
@@ -847,12 +863,37 @@ if (ZMQ_BUILD_TESTS)
 endif ()
 
 #-----------------------------------------------------------------------------
+# generate CMake config file
+include(CMakePackageConfigHelpers)
+
+set(config_install_dir "lib/cmake/${PROJECT_NAME}")
+set(config_export_name "${PROJECT_NAME}Config")
+set(targets_export_name "${PROJECT_NAME}Targets")
+set(project_config "${CMAKE_CURRENT_BINARY_DIR}/${config_export_name}.cmake")
+set(version_config "${CMAKE_CURRENT_BINARY_DIR}/${config_export_name}Version.cmake")
+set(namespace "${PROJECT_NAME}::")
+
+include(CMakePackageConfigHelpers)
+configure_package_config_file(builds/cmake/ZeroMQConfig.cmake.in
+  ${project_config}
+  INSTALL_DESTINATION ${config_install_dir})
+
+write_basic_package_version_file(
+  ${version_config}
+  VERSION ZMQ_VERSION_STRING
+  COMPATIBILITY SameMajorVersion)
+
+install(FILES ${project_config} ${version_config}
+    DESTINATION ${config_install_dir})
+
+#-----------------------------------------------------------------------------
 # installer
 
 include(GNUInstallDirs)
 
 if (MSVC)
   install (TARGETS libzmq libzmq-static
+	      EXPORT ${targets_export_name}
           ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
           LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
           PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
@@ -864,8 +905,6 @@ if (MSVC)
             PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
             COMPONENT SDK)
     if (NOT CMAKE_PDB_OUTPUT_DIRECTORY)
-      install (FILES ${CMAKE_CURRENT_BINARY_DIR}/bin/libzmq${MSVC_TOOLSET}-mt-gd-${ZMQ_VERSION_MAJOR}_${ZMQ_VERSION_MINOR}_${ZMQ_VERSION_PATCH}.pdb DESTINATION lib
-            COMPONENT SDK)
     endif ()
   else ()
     install (TARGETS libzmq
@@ -873,14 +912,26 @@ if (MSVC)
             PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
             COMPONENT Runtime)
   endif ()
+
+  install(FILES $<$<CONFIG:Debug>:$<TARGET_PDB_FILE:libzmq>> DESTINATION lib
+          COMPONENT SDK)
+
 else ()
   install (TARGETS libzmq libzmq-static
+		  EXPORT ${targets_export_name}
           RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+		  INCLUDES DESTINATION include
           ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
           LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
           FRAMEWORK DESTINATION "Library/Frameworks"
           PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 endif ()
+
+install(
+    EXPORT ${targets_export_name}
+    NAMESPACE ${namespace}
+    DESTINATION ${config_install_dir}
+)
 
 # install (FILES ${public_headers}
 #          DESTINATION include
