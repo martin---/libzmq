@@ -889,43 +889,39 @@ install(FILES ${project_config} ${version_config}
 #-----------------------------------------------------------------------------
 # installer
 
-include(GNUInstallDirs)
-
-if (MSVC)
-  install (TARGETS libzmq libzmq-static
-	      EXPORT ${targets_export_name}
-          ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-          LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-          PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+if(MSVC)
+  install(TARGETS libzmq libzmq-static
+          EXPORT ${targets_export_name}
+          ARCHIVE DESTINATION lib
+          LIBRARY DESTINATION lib
+          PUBLIC_HEADER DESTINATION include
           COMPONENT SDK)
-  if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-    install (TARGETS libzmq libzmq-static
-            RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-            ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-            PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+  if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    install(TARGETS libzmq libzmq-static
+            RUNTIME DESTINATION bin
+            ARCHIVE DESTINATION lib
+            PUBLIC_HEADER DESTINATION include
             COMPONENT SDK)
-    if (NOT CMAKE_PDB_OUTPUT_DIRECTORY)
-    endif ()
-  else ()
-    install (TARGETS libzmq
-            RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-            PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
+  else()
+    install(TARGETS libzmq
+            RUNTIME DESTINATION bin
+            PUBLIC_HEADER DESTINATION include
             COMPONENT Runtime)
-  endif ()
+  endif()
 
   install(FILES $<$<CONFIG:Debug>:$<TARGET_PDB_FILE:libzmq>> DESTINATION lib
           COMPONENT SDK)
 
-else ()
-  install (TARGETS libzmq libzmq-static
-		  EXPORT ${targets_export_name}
-          RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-		  INCLUDES DESTINATION include
-          ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-          LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+else()
+  install(TARGETS libzmq libzmq-static
+          EXPORT ${targets_export_name}
+          RUNTIME DESTINATION bin
+          INCLUDES DESTINATION include
+          ARCHIVE DESTINATION lib
+          LIBRARY DESTINATION lib
           FRAMEWORK DESTINATION "Library/Frameworks"
-          PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
-endif ()
+          PUBLIC_HEADER DESTINATION include)
+endif()
 
 install(
     EXPORT ${targets_export_name}
@@ -937,11 +933,11 @@ install(
 #          DESTINATION include
 #          COMPONENT SDK)
 
-#if (NOT ZMQ_BUILD_FRAMEWORK)
-#  file (GLOB private_headers "${CMAKE_CURRENT_SOURCE_DIR}/src/*.hpp")
-#  install (FILES ${sources} ${private_headers} DESTINATION src/zmq
-#          COMPONENT SourceCode)
-#endif ()
+if (NOT ZMQ_BUILD_FRAMEWORK)
+  file (GLOB private_headers "${CMAKE_CURRENT_SOURCE_DIR}/src/*.hpp")
+  install (FILES ${sources} ${private_headers} DESTINATION src/zmq
+          COMPONENT SourceCode)
+endif ()
 
 foreach (readme ${readme-docs})
   configure_file (${CMAKE_CURRENT_SOURCE_DIR}/${readme} ${CMAKE_CURRENT_BINARY_DIR}/${readme}.txt)
@@ -958,31 +954,6 @@ if (WITH_DOC)
 endif ()
 
 include(CMakePackageConfigHelpers)
-
-if (MSVC)
-  string(TOUPPER "${CMAKE_BUILD_TYPE}" U_CMAKE_BUILD_TYPE)
-  get_property(libzmq_pf TARGET libzmq PROPERTY ${U_CMAKE_BUILD_TYPE}_POSTFIX)
-  set(libzmq_file libzmq${libzmq_pf}${CMAKE_LINK_LIBRARY_SUFFIX})
-  get_property(libzmq_static_pf TARGET libzmq-static PROPERTY ${U_CMAKE_BUILD_TYPE}_POSTFIX)
-  set(libzmq_static_file libzmq${libzmq_static_pf}${CMAKE_LINK_LIBRARY_SUFFIX})
-else()
-  set(libzmq_file libzmq${CMAKE_SHARED_LIBRARY_SUFFIX})
-  set(libzmq_static_file libzmq${CMAKE_STATIC_LIBRARY_SUFFIX})
-endif()
-
-# GNUInstallDirs "DATADIR" wrong here; CMake search path wants "share".
-set(ZEROMQ_CMAKECONFIG_INSTALL_DIR "share/cmake/${PROJECT_NAME}" CACHE STRING "install path for ZeroMQConfig.cmake")
-
-configure_package_config_file(${PROJECT_NAME}Config.cmake.in
-                              "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
-                              INSTALL_DESTINATION ${ZEROMQ_CMAKECONFIG_INSTALL_DIR})
-write_basic_package_version_file(${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake
-                                 VERSION ${ZMQ_VERSION_MAJOR}.${ZMQ_VERSION_MINOR}.${ZMQ_VERSION_PATCH}
-                                 COMPATIBILITY AnyNewerVersion)
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake
-              ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake
-              DESTINATION ${ZEROMQ_CMAKECONFIG_INSTALL_DIR})
-
 option(ENABLE_CPACK "Enables cpack rules" ON)
 if (MSVC AND ENABLE_CPACK)
   include (InstallRequiredSystemLibraries)
