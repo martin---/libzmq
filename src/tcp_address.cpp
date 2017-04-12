@@ -236,6 +236,71 @@ int zmq::tcp_address_t::resolve_nic_name (const char *nic_, bool ipv6_, bool is_
 }
 
 #elif (defined ZMQ_HAVE_WINDOWS)
+/* mrombach: dirty hack  */
+//
+// Medium the Ndis Driver is running on (OID_GEN_MEDIA_SUPPORTED/ OID_GEN_MEDIA_IN_USE).
+//
+typedef enum _NDIS_MEDIUM
+{
+	NdisMedium802_3,
+	NdisMedium802_5,
+	NdisMediumFddi,
+	NdisMediumWan,
+	NdisMediumLocalTalk,
+	NdisMediumDix,              // defined for convenience, not a real medium
+	NdisMediumArcnetRaw,
+	NdisMediumArcnet878_2,
+	NdisMediumAtm,
+	NdisMediumWirelessWan,
+	NdisMediumIrda,
+	NdisMediumBpc,
+	NdisMediumCoWan,
+	NdisMedium1394,
+	NdisMediumInfiniBand,
+#if ((NTDDI_VERSION >= NTDDI_VISTA) || NDIS_SUPPORT_NDIS6)
+	NdisMediumTunnel,
+	NdisMediumNative802_11,
+	NdisMediumLoopback,
+#endif // (NTDDI_VERSION >= NTDDI_VISTA)
+
+#if (NTDDI_VERSION >= NTDDI_WIN7)
+	NdisMediumWiMAX,
+	NdisMediumIP,
+#endif
+
+	NdisMediumMax               // Not a real medium, defined as an upper-bound
+} NDIS_MEDIUM, *PNDIS_MEDIUM;
+
+
+//
+// Physical Medium Type definitions. Used with OID_GEN_PHYSICAL_MEDIUM.
+//
+typedef enum _NDIS_PHYSICAL_MEDIUM
+{
+	NdisPhysicalMediumUnspecified,
+	NdisPhysicalMediumWirelessLan,
+	NdisPhysicalMediumCableModem,
+	NdisPhysicalMediumPhoneLine,
+	NdisPhysicalMediumPowerLine,
+	NdisPhysicalMediumDSL,      // includes ADSL and UADSL (G.Lite)
+	NdisPhysicalMediumFibreChannel,
+	NdisPhysicalMedium1394,
+	NdisPhysicalMediumWirelessWan,
+	NdisPhysicalMediumNative802_11,
+	NdisPhysicalMediumBluetooth,
+	NdisPhysicalMediumInfiniband,
+	NdisPhysicalMediumWiMax,
+	NdisPhysicalMediumUWB,
+	NdisPhysicalMedium802_3,
+	NdisPhysicalMedium802_5,
+	NdisPhysicalMediumIrda,
+	NdisPhysicalMediumWiredWAN,
+	NdisPhysicalMediumWiredCoWan,
+	NdisPhysicalMediumOther,
+	NdisPhysicalMediumNative802_15_4,
+	NdisPhysicalMediumMax       // Not a real physical type, defined as an upper-bound
+} NDIS_PHYSICAL_MEDIUM, *PNDIS_PHYSICAL_MEDIUM;
+/* end hack */
 
 #include <netioapi.h>
 
